@@ -198,7 +198,7 @@ impl<T: ?Sized, const N: usize> Deref for FixedBox<T, N> {
             // Copy either 1 or 2 "usizes" of pointer, depending on if T is fat.
             // The purpose of this is that pointer[1] will contain the vtable
             // or size, if needed. pointer[0] actually just contains the
-            /// alignment, which we don't really care about...
+            // alignment, which we don't really care about...
             ptr::copy(
                 &self.fake_ptr as *const *const T as *const usize,
                 pointer.as_mut_ptr(),
@@ -307,6 +307,10 @@ impl<T: core::fmt::Debug + ?Sized, const N: usize> core::fmt::Display for FixedB
 // PartialEq, PartialOrd, etc.
 
 #[cfg(test)]
+#[macro_use]
+extern crate std;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -363,5 +367,33 @@ mod tests {
         let f: SmallBox<u64> = SmallBox::new(12u64);
         let k: Result<EmptyBox<u64>, _> = f.try_resize();
         assert!(k.is_err());
+    }
+
+    #[test]
+    fn test_dyn_fn() {
+        use std::vec::Vec;
+
+        fn return_three() -> i32 {
+            3
+        }
+
+        struct Foo(i32, i32);
+        let five = Foo(5, 0);
+
+        let x: Vec<TinyBox<dyn Fn() -> i32>> = vec![
+            TinyBox::new(return_three),
+            TinyBox::new(|| 4),
+            TinyBox::new(|| {
+                let five = &five;
+                five.0
+            }),
+        ];
+
+        let mut sum = 0;
+        for f in x {
+            sum += f();
+        }
+
+        assert_eq!(sum, 3 + 4 + 5);
     }
 }
